@@ -1,3 +1,4 @@
+#server
 fastapi
 uvicorn
 sqlalchemy
@@ -6,3 +7,7 @@ pydantic[email]
 python-jose
 python-multipart==0.0.5
 bcrypt
+
+# tests
+pytest
+httpx 
