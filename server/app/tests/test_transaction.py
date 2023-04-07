@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 from app.main import app
 
 client = TestClient(app)
-access_token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0ZXJAZ21haWwuY29tIiwiZXhwIjoxNjgwODUyNTU0fQ.5-mmlCyvOm_updVZbI34G1QglO4xlxPbkdRIm4nGm0E"
+access_token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0ZXJAZ21haWwuY29tIiwiZXhwIjoxNjgwODU3ODY3fQ.wIhBnXiXnuaoIHHbPBgUcqykP0lHe_GUHEmAvYaBjLU"
 
 def test_search_transactions():
     headers = {"Authorization": f"Bearer {access_token}"}
