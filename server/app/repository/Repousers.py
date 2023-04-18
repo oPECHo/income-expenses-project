@@ -1,12 +1,13 @@
-from ..core import models
-from ..schemas import Scuser
-from sqlalchemy.orm import Session
 from ..utils.hashing import Hash
+from fastapi.encoders import jsonable_encoder
+from ..core.database import db
+from ..core.models import User
+from fastapi import Body, status
+from fastapi.responses import JSONResponse
 
-def create_user(request: Scuser.User, db: Session):
-    new_user = models.User(username=request.username,email=request.email,password=Hash.bcrypt(request.password))
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
-    return new_user
-
+async def create(user: User = Body(...)):
+    user.password = Hash.bcrypt(user.password)
+    user = jsonable_encoder(user)
+    new_user = await db["users"].insert_one(user)
+    created_user = await db["users"].find_one({"_id": new_user.inserted_id})
+    return JSONResponse(status_code=status.HTTP_201_CREATED, content=created_user)

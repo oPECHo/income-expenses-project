@@ -1,65 +1,60 @@
 from typing import Optional
-from sqlalchemy.orm import Session
-from fastapi import Depends, HTTPException, status, Query
-from ..core import models
-from ..schemas import ScTrans
-from ..core.database import get_db
+from bson import ObjectId
+from fastapi import Body, HTTPException, status
+from ..core.models import Transaction, UpdateTransaction
+from fastapi.encoders import jsonable_encoder
+from ..core.database import db
+from fastapi.responses import JSONResponse
 
-def Search(
-    id:Optional[int] = Query(None),
-    db: Session = Depends(get_db),
-    tag: Optional[str] = Query(None),
-    transaction_type: Optional[str] = Query(None)
+async def Search(
+    id: Optional[str] = None,
+    tag: Optional[str] = None,
+    transaction_type: Optional[str] = None
 ):
     if not id and not tag and not transaction_type:
-        return db.query(models.Transaction).all()
+        return await db['transactions'].find().to_list(1000)
     
     if id:
-        transaction = db.query(models.Transaction).filter(models.Transaction.id == id).first()
+        transaction = await db['transactions'].find({'_id': id}).to_list(1000)
         if not transaction:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, 
                                 detail=f'Transaction with the ID [{id}] is not available')
-        return [transaction]
+        return transaction
 
     if tag:
-        transactions = db.query(models.Transaction).filter(models.Transaction.tag == tag).all()
+        transactions = await db['transactions'].find({'tag': tag}).to_list(1000)
         if not transactions:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, 
                                 detail=f'Transaction with the Tag [{tag}] is not available')
         return transactions
 
     if transaction_type:
-        transactions = db.query(models.Transaction).filter(models.Transaction.transaction_type == transaction_type).all()
+        transactions = await db['transactions'].find({'transaction_type': transaction_type}).to_list(1000)
         if not transactions:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, 
                                 detail=f'Transaction with the Type [{transaction_type}] is not available')
         return transactions
 
-def create(request,db: Session):
-    new_transaction = models.Transaction(date=request.date, body=request.body, amount=request.amount,tag=request.tag, transaction_type=request.transaction_type)
-    db.add(new_transaction)
-    db.commit()
-    db.refresh(new_transaction)
-    return new_transaction
+async def create(transaction: Transaction = Body(...)):
+    transaction = jsonable_encoder(transaction)
+    new_transaction = await db["transactions"].insert_one(transaction)
+    created_transaction = await db["transactions"].find_one({"_id": new_transaction.inserted_id})
+    return JSONResponse(status_code=status.HTTP_201_CREATED, content=created_transaction)
 
-def destroy(id:int, db: Session):
-    transaction = db.query(models.Transaction).filter(models.Transaction.id == id)
-    if not transaction.first():
+async def destroy(id:str):
+    result = await db['transactions'].delete_one({"_id": id})
+    if result.deleted_count == 0:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail=f'Transaction with id [{id}] not found')
-    transaction.delete(synchronize_session=False)
-    db.commit()
     return 'done'
 
-def update(id:int, request:ScTrans, db: Session):
-    transaction = db.query(models.Transaction).filter(models.Transaction.id == id).first()
-    if not transaction:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail=f'Transaction with id [{id}] not found')
-    transaction.date = request.date
-    transaction.body = request.body
-    transaction.amount = request.amount
-    transaction.tag = request.tag
-    transaction.transaction_type = request.transaction_type
-    db.commit()
-    return 'updated'
+async def update(id:str, transaction: UpdateTransaction = Body(...)):
+    transaction = {k: v for k, v in transaction.dict().items() if v is not None}
+    if len(transaction) >= 1:
+        update_result = await db["transactions"].update_one({"_id": id}, {"$set": transaction})
+        if update_result.modified_count == 1:
+            if (updated_transaction := await db["students"].find_one({"_id": id})) is not None:
+                return updated_transaction
+    if (existing_transaction := await db["transactions"].find_one({"_id": id})) is not None:
+        return existing_transaction
+    raise HTTPException(status_code=404, detail=f"Student {id} not found")

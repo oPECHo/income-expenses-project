@@ -1,16 +1,11 @@
-from fastapi import APIRouter, Depends
-
-from ..core import database
-from ..schemas import Scuser
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, Body
 from ..repository import Repousers
+from ..core.models import User
 
 router = APIRouter(
     tags=['Register']
 )
 
-get_db = database.get_db
-
-@router.post('/register',response_model=Scuser.ShowUser)
-async def create_user(request: Scuser.User, db: Session = Depends(get_db)):
-    return Repousers.create_user(request, db)
+@router.post('/register',response_model=User)
+async def create_user(user: User = Body(...)):
+    return await Repousers.create(user)
