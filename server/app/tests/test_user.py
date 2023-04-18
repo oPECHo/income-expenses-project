@@ -13,7 +13,7 @@ def test_create_user():
         "password": "password test",
     }
     response = client.post("/register", json=user)
-    assert response.status_code == 200
+    assert response.status_code == 201
     assert response.json()["username"] == user["username"]
     assert response.json()["email"] == user["email"]
 
