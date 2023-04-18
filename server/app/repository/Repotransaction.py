@@ -53,8 +53,10 @@ async def update(id:str, transaction: UpdateTransaction = Body(...)):
     if len(transaction) >= 1:
         update_result = await db["transactions"].update_one({"_id": id}, {"$set": transaction})
         if update_result.modified_count == 1:
-            if (updated_transaction := await db["students"].find_one({"_id": id})) is not None:
-                return updated_transaction
-    if (existing_transaction := await db["transactions"].find_one({"_id": id})) is not None:
-        return existing_transaction
-    raise HTTPException(status_code=404, detail=f"Student {id} not found")
+            if (await db["transactions"].find_one({"_id": id})) is not None:
+                return 'updated'
+    if (await db["transactions"].find_one({"_id": id})) is not None:
+        return 'Not Updated'
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, 
+                        detail=f"transaction [{id}] not found")
+
